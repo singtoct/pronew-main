@@ -887,6 +887,7 @@ const App: React.FC = () => {
               onAddBom={handleAddBom}
               onUpdateBom={handleUpdateBom}
               onDeleteBom={handleDeleteBom}
+              onGenerateMissingBoms={handleGenerateMissingBoms}
             />
           } />
           <Route path="/master-data" element={<KnowledgeBase customKnowledge={customKnowledge} onSaveKnowledge={handleSaveKnowledge} onDeleteKnowledge={handleDeleteKnowledge} />} />
@@ -929,8 +930,8 @@ const App: React.FC = () => {
         isOpen={isAssistantOpen} 
         onClose={() => setIsAssistantOpen(false)}
         jobs={jobs}
-        inventory={MOCK_INVENTORY}
-        boms={MOCK_BOMS}
+        inventory={inventory}
+        boms={boms}
         specs={PRODUCT_SPECS}
         machineCapabilities={MACHINE_MOLD_CAPABILITIES}
         formTemplates={formTemplates}

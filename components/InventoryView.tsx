@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { InventoryItem, ProductBOM, MOCK_INVENTORY, MOCK_BOMS } from '../types';
-import { Search, Package, AlertTriangle, Layers, Filter, Upload, FileDown, Plus, Edit2, Trash2, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Search, Package, AlertTriangle, Layers, Filter, Upload, FileDown, Plus, Edit2, Trash2, CheckCircle2, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { InventoryItemModal } from './InventoryItemModal';
 import { BomModal } from './BomModal';
@@ -15,6 +15,7 @@ interface InventoryViewProps {
   onAddBom?: (bom: Omit<ProductBOM, 'id'>) => void;
   onUpdateBom?: (bom: ProductBOM) => void;
   onDeleteBom?: (id: string) => void;
+  onGenerateMissingBoms?: () => Promise<number>;
 }
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ 
@@ -26,7 +27,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   onDeleteInventory,
   onAddBom,
   onUpdateBom,
-  onDeleteBom
+  onDeleteBom,
+  onGenerateMissingBoms
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'inventory' | 'bom'>('inventory');
@@ -67,6 +69,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   // BOM Modal State
   const [isBomModalOpen, setIsBomModalOpen] = useState(false);
   const [editingBom, setEditingBom] = useState<ProductBOM | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleOpenAddBom = () => {
     setEditingBom(null);
@@ -89,6 +92,24 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   const handleDeleteBomClick = (id: string) => {
     if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบสูตรการผลิตนี้?')) {
       onDeleteBom?.(id);
+    }
+  };
+
+  const handleGenerateBoms = async () => {
+    if (!onGenerateMissingBoms) return;
+    setIsGenerating(true);
+    try {
+      const count = await onGenerateMissingBoms();
+      if (count > 0) {
+        alert(`สร้างสูตรการผลิตอัตโนมัติสำเร็จ ${count} รายการ`);
+      } else {
+        alert('ไม่พบสินค้าที่ต้องการสูตรการผลิตเพิ่ม หรือมีสูตรครบถ้วนแล้ว');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('เกิดข้อผิดพลาดในการสร้างสูตร');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -415,13 +436,25 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
                 className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-full bg-white shadow-sm"
               />
             </div>
-            <button 
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 text-sm font-medium shadow-sm transition-colors"
-              onClick={handleOpenAddBom}
-            >
-              <Plus size={16} />
-              สร้างสูตรการผลิตใหม่
-            </button>
+            <div className="flex gap-2">
+              {onGenerateMissingBoms && (
+                <button 
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors disabled:opacity-50"
+                  onClick={handleGenerateBoms}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                  <span className="hidden sm:inline">สร้างสูตรอัตโนมัติ (AI)</span>
+                </button>
+              )}
+              <button 
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 text-sm font-medium shadow-sm transition-colors"
+                onClick={handleOpenAddBom}
+              >
+                <Plus size={16} />
+                <span className="hidden sm:inline">สร้างสูตรใหม่</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
