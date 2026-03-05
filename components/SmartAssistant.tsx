@@ -27,6 +27,7 @@ interface SmartAssistantProps {
   onLogDowntime?: (data: any) => void;
   onAddKnowledge?: (topic: string, content: string) => void;
   onGenerateMissingBoms?: () => Promise<number>;
+  onDeleteJob?: (id: string) => void;
   messages: AiMessage[];
   setMessages: React.Dispatch<React.SetStateAction<AiMessage[]>>;
 }
@@ -57,6 +58,7 @@ export const SmartAssistant: React.FC<SmartAssistantProps> = ({
   onLogDowntime,
   onAddKnowledge,
   onGenerateMissingBoms,
+  onDeleteJob,
   messages,
   setMessages
 }) => {
@@ -486,12 +488,33 @@ export const SmartAssistant: React.FC<SmartAssistantProps> = ({
         }
       };
 
+      const deleteJobFunc: FunctionDeclaration = {
+        name: "deleteJob",
+        description: "ลบรายการผลิต (Job Order) ออกจากระบบ",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            jobId: { type: Type.STRING, description: "รหัส Job ID หรือ Job Order ที่ต้องการลบ" }
+          },
+          required: ["jobId"]
+        }
+      };
+
+      const cleanupUnknownJobsFunc: FunctionDeclaration = {
+        name: "cleanupUnknownJobs",
+        description: "ลบรายการผลิตที่เป็น 'Unknown' หรือข้อมูลไม่สมบูรณ์ออกจากระบบทั้งหมด (เช่น machineId='Unknown' หรือ productItem='Unknown')",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {},
+        }
+      };
+
       // 5. Call API
       const response = await ai.models.generateContent({
         model: 'gemini-3.1-pro-preview',
         contents: sanitizedContents,
         config: {
-          tools: [{ functionDeclarations: [rescheduleMachineJobsFunc, updateJobStatusFunc, createJobFunc, logDowntimeFunc, addKnowledgeFunc, generateMissingBomsFunc] }]
+          tools: [{ functionDeclarations: [rescheduleMachineJobsFunc, updateJobStatusFunc, createJobFunc, logDowntimeFunc, addKnowledgeFunc, generateMissingBomsFunc, deleteJobFunc, cleanupUnknownJobsFunc] }]
         }
       });
 
@@ -576,6 +599,33 @@ export const SmartAssistant: React.FC<SmartAssistantProps> = ({
                 displayText += `\n\n✅ **ปลดล็อคความสามารถ:** ผมได้สร้างสูตรการผลิต (BOM) ใหม่ให้สินค้า ${count} รายการเรียบร้อยแล้วครับ ตอนนี้คุณสามารถวางแผนผลิตสินค้าเหล่านี้ได้ทันที!`;
               } else {
                 displayText += `\n\nℹ️ **ตรวจสอบแล้ว:** สินค้าทุกรายการมีสูตรการผลิตครบถ้วนอยู่แล้วครับ ไม่จำเป็นต้องสร้างเพิ่ม`;
+              }
+            } else {
+              displayText += `\n\n❌ **ขออภัย:** ฟังก์ชันนี้ยังไม่เปิดใช้งานในระบบครับ`;
+            }
+          } else if (call.name === 'deleteJob') {
+            const { jobId } = call.args as any;
+            const jobToDelete = jobs.find(j => j.id === jobId || j.jobOrder === jobId);
+            if (jobToDelete && onDeleteJob) {
+              onDeleteJob(jobToDelete.id);
+              displayText += `\n\n🗑️ **ดำเนินการอัตโนมัติ:** ลบรายการผลิต ${jobToDelete.jobOrder} (${jobToDelete.productItem}) เรียบร้อยแล้วครับ`;
+            } else {
+              displayText += `\n\n❌ **ดำเนินการอัตโนมัติ:** ไม่พบรายการผลิต ${jobId} หรือไม่สามารถลบได้ครับ`;
+            }
+          } else if (call.name === 'cleanupUnknownJobs') {
+            if (onDeleteJob) {
+              const unknownJobs = jobs.filter(j => 
+                j.machineId === 'Unknown' || 
+                j.productItem === 'Unknown' || 
+                j.productItem === 'New Item' ||
+                j.jobOrder.startsWith('AUTO-') && j.status === 'Running' && j.totalProduction === 0
+              );
+              
+              if (unknownJobs.length > 0) {
+                unknownJobs.forEach(j => onDeleteJob(j.id));
+                displayText += `\n\n🧹 **ดำเนินการอัตโนมัติ:** ลบรายการผลิตที่ไม่สมบูรณ์ (Unknown) จำนวน ${unknownJobs.length} รายการ เรียบร้อยแล้วครับ`;
+              } else {
+                displayText += `\n\nℹ️ **ตรวจสอบแล้ว:** ไม่พบรายการผลิตที่ไม่สมบูรณ์ (Unknown) ในระบบครับ`;
               }
             } else {
               displayText += `\n\n❌ **ขออภัย:** ฟังก์ชันนี้ยังไม่เปิดใช้งานในระบบครับ`;

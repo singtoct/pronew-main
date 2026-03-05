@@ -7,9 +7,10 @@ interface EditJobModalProps {
   onClose: () => void;
   job: ProductionJob | null;
   onSave: (updatedJob: ProductionJob) => void;
+  onDelete?: (id: string) => void;
 }
 
-export const EditJobModal: React.FC<EditJobModalProps> = ({ isOpen, onClose, job, onSave }) => {
+export const EditJobModal: React.FC<EditJobModalProps> = ({ isOpen, onClose, job, onSave, onDelete }) => {
   const [formData, setFormData] = useState<Partial<ProductionJob>>({
     status: 'Running',
     productItem: '',
@@ -20,6 +21,7 @@ export const EditJobModal: React.FC<EditJobModalProps> = ({ isOpen, onClose, job
     jobType: 'Planned',
     materials: []
   });
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const toInputString = (isoString?: string) => {
     if (!isoString) return '';
@@ -28,6 +30,7 @@ export const EditJobModal: React.FC<EditJobModalProps> = ({ isOpen, onClose, job
   };
 
   useEffect(() => {
+    setIsConfirmingDelete(false);
     if (job) {
       setFormData({ 
         ...job,
@@ -354,7 +357,7 @@ export const EditJobModal: React.FC<EditJobModalProps> = ({ isOpen, onClose, job
                 const isShortage = inventoryItem && currentStock < requiredQty;
 
                 return (
-                <div key={m.id} className={`grid grid-cols-1 md:grid-cols-12 gap-2 p-2 rounded-lg border ${isShortage ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                <div key={m.id || idx} className={`grid grid-cols-1 md:grid-cols-12 gap-2 p-2 rounded-lg border ${isShortage ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
                   <div className="md:col-span-1 flex items-center justify-center font-bold text-slate-400">{idx + 1}</div>
                   <div className="md:col-span-3">
                     <input type="text" placeholder="ชื่อวัตถุดิบ" value={m.name} onChange={e => updateMaterial(m.id, 'name', e.target.value)} className="w-full text-xs p-1.5 border border-slate-300 rounded" />
@@ -404,19 +407,52 @@ export const EditJobModal: React.FC<EditJobModalProps> = ({ isOpen, onClose, job
             />
           </div>
 
-          <div className="pt-6 flex justify-end gap-3 sticky bottom-0 bg-white border-t border-slate-100 py-4 mt-8">
-            <button 
-              type="button" onClick={onClose}
-              className="px-6 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors"
-            >
-              ยกเลิก
-            </button>
-            <button 
-              type="submit" 
-              className="px-8 py-2.5 bg-brand-600 text-white font-bold hover:bg-brand-700 rounded-xl shadow-lg shadow-brand-500/30 flex items-center gap-2 active:scale-95 transition-all"
-            >
-              <Save size={18} /> บันทึกข้อมูล
-            </button>
+          <div className="pt-6 flex justify-between items-center sticky bottom-0 bg-white border-t border-slate-100 py-4 mt-8">
+            <div>
+              {job && onDelete && (
+                isConfirmingDelete ? (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                    <span className="text-sm text-slate-600 font-medium">ยืนยันลบ?</span>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(job.id)}
+                      className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                    >
+                      ใช่, ลบเลย
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingDelete(false)}
+                      className="px-3 py-1.5 bg-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-300 transition-colors"
+                    >
+                      ยกเลิก
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    type="button" 
+                    onClick={() => setIsConfirmingDelete(true)}
+                    className="px-4 py-2.5 text-red-500 font-bold hover:bg-red-50 hover:text-red-700 rounded-xl transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 size={18} /> ลบรายการ
+                  </button>
+                )
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button 
+                type="button" onClick={onClose}
+                className="px-6 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button 
+                type="submit" 
+                className="px-8 py-2.5 bg-brand-600 text-white font-bold hover:bg-brand-700 rounded-xl shadow-lg shadow-brand-500/30 flex items-center gap-2 active:scale-95 transition-all"
+              >
+                <Save size={18} /> บันทึกข้อมูล
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -371,6 +371,19 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteJob = async (jobId: string) => {
+    try {
+      await deleteDoc(doc(db, 'jobs', jobId));
+      const newJobs = jobs.filter(j => j.id !== jobId);
+      setJobs(newJobs);
+      addLog('DELETE', `ลบงานผลิต ID: ${jobId}`, jobId, newJobs);
+      setIsModalOpen(false);
+      setEditingJob(null);
+    } catch (error) {
+      console.error("Error deleting job from Firebase:", error);
+    }
+  };
+
   const handleCreateJob = async (newJob: ProductionJob) => {
     try {
       await setDoc(doc(db, 'jobs', newJob.id), newJob);
@@ -944,6 +957,7 @@ const App: React.FC = () => {
         onLogDowntime={handleLogDowntime}
         onAddKnowledge={handleAddCustomKnowledge}
         onGenerateMissingBoms={handleGenerateMissingBoms}
+        onDeleteJob={handleDeleteJob}
         messages={aiMessages}
         setMessages={setAiMessages}
       />
@@ -953,6 +967,7 @@ const App: React.FC = () => {
         onClose={() => { setIsModalOpen(false); setEditingJob(null); }} 
         job={editingJob} 
         onSave={handleSaveJob} 
+        onDelete={handleDeleteJob}
       />
 
       <GoogleSheetsImportModal 
